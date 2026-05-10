@@ -3,16 +3,19 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const express = require('express');
 const app = express();
 
-app.get('/', (req, res) => res.send('LexOS Neural Engine 3.1: Active.'));
+// 24/7 Uptime Link
+app.get('/', (req, res) => res.send('LexOS 3.1: Systems Nominal.'));
 app.listen(process.env.PORT || 3000);
+
+// Generate a Unique Session ID for this specific boot
+const SESSION_ID = Math.floor(1000 + Math.random() * 9000);
 
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
-// INITIALIZE ELITE 2026 NEURAL BRAIN
+// AI BRAIN INITIALIZATION
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// Target: Gemini 3.1 Flash-Lite (Released May 2026)
 const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
 const CHANNELS = {
@@ -27,9 +30,10 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO_OWNER = 'rayray8606'; 
 const REPO_NAME = 'boss-babes-hq'; 
 const FILE_PATH = 'index.html';
+let customCommands = new Map();
 
 client.on('ready', () => {
-  console.log(`[ROBERTS ENT. SYSTEM]: LexOS 3.1 Online. Neural Link Hot.`);
+  console.log(`[SYSTEM ONLINE]: LexOS 3.1 | Session: ${SESSION_ID}`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -37,32 +41,31 @@ client.on('messageCreate', async (message) => {
   const args = message.content.split(' ');
   const command = args[0].toLowerCase();
 
-  // --- THE AI BRAIN (!ask) ---
-  if (command === '!ask' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
-    const prompt = args.slice(1).join(' ');
-    if (!prompt) return message.reply('👑 **LexOS:** I am listening, Commander.');
-    
-    try {
-      // Direct call to the Gemini 3.1 engine
-      const result = await model.generateContent(`You are LexOS, the elite AI Chief of Staff for Commander Lexieee. ${prompt}`);
-      const response = await result.response;
-      message.reply(response.text());
-    } catch (error) {
-      console.error("BRAIN ERROR:", error);
-      message.reply(`❌ **Neural Link Error:** ${error.message || "Model Mismatch. Check API Key Tier."}`);
-    }
+  // --- DIAGNOSTIC: !version ---
+  if (command === '!version') {
+    message.reply(`🛡️ **LexOS Core V3.1**\n**Status:** Active\n**Session ID:** \`${SESSION_ID}\`\n**Brain:** Gemini 3.1 Flash-Lite`);
   }
 
-  // --- BROADCAST SYSTEM ---
+  // --- THE AI BRAIN: !ask ---
+  if (command === '!ask' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
+    const prompt = args.slice(1).join(' ');
+    if (!prompt) return message.reply('👑 **LexOS:** Awaiting instructions, Commander.');
+    try {
+      const result = await model.generateContent(`You are LexOS, the elite AI Chief of Staff for Commander Lexieee. Response must be professional and strategic. Task: ${prompt}`);
+      message.reply(result.response.text());
+    } catch (e) { message.reply(`❌ Neural Error: ${e.message}`); }
+  }
+
+  // --- BROADCASTS ---
   if (command === '!tiktok') {
     const target = client.channels.cache.get(CHANNELS.TIKTOK_FEED);
-    const embed = new EmbedBuilder().setColor('#00f2ea').setTitle('🚀 NEW CONTENT').setDescription(`@everyone **Commander Lexieee is live.** \n\n${args[1]}`);
+    const embed = new EmbedBuilder().setColor('#00f2ea').setTitle('🚀 NEW CONTENT').setDescription(`@everyone **The Commander is live.**\n\n${args[1] || 'Link Pending'}`);
     if (target) target.send({ content: '@everyone', embeds: [embed] });
   }
 
   if (command === '!meta') {
     const target = client.channels.cache.get(CHANNELS.WARZONE);
-    const embed = new EmbedBuilder().setColor('#ff1a1a').setTitle('🔫 ELITE META').addFields({ name: '🔥 BO7 / Warzone', value: 'XM4 Build | C9 Speed Build' });
+    const embed = new EmbedBuilder().setColor('#ff1a1a').setTitle('🔫 CURRENT META').addFields({ name: '🔥 Elite Loadouts', value: 'XM4 Damage Build | C9 Movement Build' });
     if (target) target.send({ embeds: [embed] });
   }
 
@@ -71,14 +74,12 @@ client.on('messageCreate', async (message) => {
     if (target) target.send('🚨 **WAR ROOM ALERT:** @everyone Lexie is dropping in. Fill the lobby.');
   }
 
-  // --- WEBSITE OVERRIDE ---
+  // --- WEBSITE CONTROL ---
   if (command === '!update-timer' && message.channel.id === CHANNELS.WEB_OPS) {
     const newDate = args.slice(1).join(' ');
-    message.reply('⏳ Executing override...');
+    message.reply('⏳ Executing website override...');
     try {
-      const getFile = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-          headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` }
-      });
+      const getFile = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, { headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` } });
       const fileData = await getFile.json();
       let content = Buffer.from(fileData.content, 'base64').toString('utf-8');
       content = content.replace(/const targetDate = new Date\(".*?"\)\.getTime\(\);/, `const targetDate = new Date("${newDate}").getTime();`);
@@ -86,9 +87,16 @@ client.on('messageCreate', async (message) => {
           method: 'PUT', headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` },
           body: JSON.stringify({ message: 'LexOS Override', content: Buffer.from(content).toString('base64'), sha: fileData.sha })
       });
-      message.reply('✅ Website Updated.');
+      message.reply('✅ Website Mainframe Updated.');
     } catch (e) { message.reply('❌ Push Failed.'); }
   }
+
+  // --- DYNAMIC COMMANDS ---
+  if (command === '!add-cmd' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
+    customCommands.set(args[1].toLowerCase(), args.slice(2).join(' '));
+    message.reply(`✅ Logic Added: \`${args[1]}\``);
+  }
+  if (customCommands.has(command)) message.channel.send(customCommands.get(command));
 });
 
 client.login(process.env.DISCORD_TOKEN);
