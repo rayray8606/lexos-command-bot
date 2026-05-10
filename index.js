@@ -3,17 +3,14 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Parser = require('rss-parser');
 const express = require('express');
 
+// --- 1. THE HEARTBEAT ENGINE (KEEPS RENDER AWAKE) ---
 const app = express();
 const parser = new Parser();
+app.get('/', (req, res) => res.status(200).send('LexOS 3.1: Systems Nominal. Heartbeat Optimal.'));
+app.listen(process.env.PORT || 10000, () => console.log(`[NETWORK]: Web Port 10000 Locked.`));
 
-// 1. THE HEARTBEAT (Fixed for UptimeRobot)
-app.get('/', (req, res) => {
-    res.status(200).send('LexOS 3.1: Heartbeat Optimal.');
-});
-const server = app.listen(process.env.PORT || 10000, () => {
-    console.log(`[NETWORK]: Web Server Active on Port ${process.env.PORT || 10000}`);
-});
-
+// --- 2. INITIALIZATION ---
+const SESSION_ID = Math.floor(1000 + Math.random() * 9000);
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
@@ -34,20 +31,19 @@ let tiktokHandle = '';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO_OWNER = 'rayray8606'; 
 const REPO_NAME = 'boss-babes-hq';
+const FILE_PATH = 'index.html';
 
-// 2. THE RECONNECTION LOGIC
+// --- 3. THE SENTINEL (TIKTOK AUTO-TRACKER) ---
 client.on('ready', () => {
-  console.log(`[SYSTEM]: LexOS Online. Sentinel Heartbeat Synchronized.`);
-  setInterval(trackTikTok, 20 * 60 * 1000); // Scan every 20 mins
+  console.log(`[SYSTEM ONLINE]: LexOS 3.1 | Session: ${SESSION_ID}`);
+  setInterval(trackTikTok, 25 * 60 * 1000); // Scans every 25 mins
 });
 
 async function trackTikTok() {
     if (!tiktokHandle) return;
     try {
-        // Using a more stable bridge for 2026
         const feed = await parser.parseURL(`https://tok.artemislena.eu.org/${tiktokHandle}/rss`);
         const latestVideo = feed.items[0];
-        
         if (latestVideo && latestVideo.id !== lastVideoID) {
             lastVideoID = latestVideo.id;
             const channel = client.channels.cache.get(CHANNELS.TIKTOK_FEED);
@@ -55,52 +51,74 @@ async function trackTikTok() {
                 .setColor('#ff1a1a')
                 .setTitle('🚀 NEW CONTENT: BOSS BABES HQ')
                 .setURL(latestVideo.link)
-                .setDescription(`@everyone **The Commander just posted!** \n\nGet in there and flood the comments for the algorithm! \n\n[WATCH NOW](${latestVideo.link})`)
-                .setFooter({ text: 'LexOS Sentinel | Powered by Roberts Ent.' });
-
+                .setDescription(`@everyone **The Commander just posted!** \n\nFlood the comments now for the algorithm! \n\n[WATCH HERE](${latestVideo.link})`)
+                .setFooter({ text: `LexOS Sentinel | ID: ${SESSION_ID}` });
             if (channel) channel.send({ content: '@everyone', embeds: [embed] });
         }
-    } catch (e) {
-        console.log("[SENTINEL]: Polling TikTok... (No new content or temporary timeout)");
-    }
+    } catch (e) { console.log("[SENTINEL]: Polling..."); }
 }
 
+// --- 4. COMMAND LOGIC ---
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
-  const command = message.content.split(' ')[0].toLowerCase();
-  const args = message.content.split(' ').slice(1);
+  const args = message.content.split(' ');
+  const command = args[0].toLowerCase();
 
-  // --- COMMANDS ---
+  // !version
+  if (command === '!version') {
+    return message.reply(`🛡️ **LexOS Core V3.1**\n**Status:** Active\n**Session ID:** \`${SESSION_ID}\`\n**Brain:** Gemini 3.1 Flash-Lite`);
+  }
+
+  // !ask (The AI Brain)
+  if (command === '!ask' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
+    const prompt = args.slice(1).join(' ');
+    if (!prompt) return message.reply('👑 **LexOS:** Awaiting instructions, Commander.');
+    try {
+      const result = await model.generateContent(`You are LexOS, the elite AI Chief of Staff for Commander Lexieee and Boss Babes HQ. Task: ${prompt}`);
+      const responseText = result.response.text();
+      // Split message if over 2000 characters
+      for (let i = 0; i < responseText.length; i += 1900) {
+          await message.reply(responseText.substring(i, i + 1900));
+      }
+    } catch (e) { message.reply('❌ Neural link timed out. Restart Render service.'); }
+  }
+
+  // !set-tiktok
   if (command === '!set-tiktok' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
-    tiktokHandle = args[0]?.replace('@', '');
+    tiktokHandle = args[1]?.replace('@', '');
     message.reply(`✅ **Sentinel Locked:** Tracking @${tiktokHandle}. First scan initiating...`);
     trackTikTok();
   }
 
-  if (command === '!ask' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
-    try {
-      const result = await model.generateContent(`You are LexOS, the elite AI Chief of Staff for Commander Lexieee and Boss Babes HQ. ${args.join(' ')}`);
-      message.reply(result.response.text());
-    } catch (e) { message.reply('❌ Neural link timed out. Try again.'); }
-  }
-
+  // !squad-up
   if (command === '!squad-up') {
     const target = client.channels.cache.get(CHANNELS.SQUAD_RALLY);
-    if (target) target.send('🚨 **WAR ROOM ALERT:** @everyone Lexie is dropping in. Fill the lobby now. Join Voice.');
+    if (target) target.send('🚨 **WAR ROOM ALERT:** @everyone Lexie is dropping in. Fill the lobby now for matchmaking/dual play. Join Voice.');
   }
 
+  // !meta
   if (command === '!meta') {
     const target = client.channels.cache.get(CHANNELS.WARZONE);
     const embed = new EmbedBuilder().setColor('#00f2ea').setTitle('🔫 CURRENT ELITE META').addFields({ name: '🔥 BO7 / Warzone', value: 'XM4 Build | C9 Speed Build' });
     if (target) target.send({ embeds: [embed] });
   }
-  
+
+  // !update-timer (Website Override)
   if (command === '!update-timer' && message.channel.id === CHANNELS.WEB_OPS) {
-    const newDate = args.join(' ');
-    message.reply('⏳ Rewriting Website Mainframe...');
-    // GitHub Logic stays same...
+    const newDate = args.slice(1).join(' ');
+    message.reply('⏳ Executing Website Override...');
+    try {
+      const getFile = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, { headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` } });
+      const fileData = await getFile.json();
+      let content = Buffer.from(fileData.content, 'base64').toString('utf-8');
+      content = content.replace(/const targetDate = new Date\(".*?"\)\.getTime\(\);/, `const targetDate = new Date("${newDate}").getTime();`);
+      await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+          method: 'PUT', headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` },
+          body: JSON.stringify({ message: 'LexOS Override', content: Buffer.from(content).toString('base64'), sha: fileData.sha })
+      });
+      message.reply('✅ Website Mainframe Updated.');
+    } catch (e) { message.reply('❌ Push Failed.'); }
   }
 });
 
-// Automatic login and error handling
-client.login(process.env.DISCORD_TOKEN).catch(err => console.error("[AUTH ERROR]: Token rejected."));
+client.login(process.env.DISCORD_TOKEN);
