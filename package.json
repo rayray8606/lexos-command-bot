@@ -1,5 +1,14 @@
-"dependencies": {
+{
+  "name": "lexos-command-bot",
+  "version": "1.0.0",
+  "description": "LexOS Neural Engine",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.11.0",
     "discord.js": "^14.15.3",
-    "express": "^4.19.2",
-    "@google/generative-ai": "^0.11.0"
+    "express": "^4.19.2"
   }
+}
