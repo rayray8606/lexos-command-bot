@@ -3,17 +3,17 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const express = require('express');
 const app = express();
 
-app.get('/', (req, res) => res.send('LexOS Neural Engine: Active.'));
+app.get('/', (req, res) => res.send('LexOS Neural Engine 3.1: Active.'));
 app.listen(process.env.PORT || 3000);
 
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
-// INITIALIZE THE BRAIN
+// INITIALIZE ELITE 2026 NEURAL BRAIN
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// Using the most stable model identifier for 2026
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+// Target: Gemini 3.1 Flash-Lite (Released May 2026)
+const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
 const CHANNELS = {
     TIKTOK_FEED: '1503106758028034068',
@@ -29,7 +29,7 @@ const REPO_NAME = 'boss-babes-hq';
 const FILE_PATH = 'index.html';
 
 client.on('ready', () => {
-  console.log(`[ROBERTS ENT. SYSTEM]: LexOS Online. Neural Link Hot.`);
+  console.log(`[ROBERTS ENT. SYSTEM]: LexOS 3.1 Online. Neural Link Hot.`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -43,24 +43,17 @@ client.on('messageCreate', async (message) => {
     if (!prompt) return message.reply('👑 **LexOS:** I am listening, Commander.');
     
     try {
-      // Direct call to the neural engine
-      const result = await model.generateContent(`You are LexOS, the elite AI Chief of Staff for Commander Lexieee. Tone: Strategic and Professional. Answer this: ${prompt}`);
+      // Direct call to the Gemini 3.1 engine
+      const result = await model.generateContent(`You are LexOS, the elite AI Chief of Staff for Commander Lexieee. ${prompt}`);
       const response = await result.response;
-      const text = response.text();
-      
-      // If response is too long for Discord, we split it
-      if (text.length > 2000) {
-          message.reply(text.substring(0, 1900) + "...");
-      } else {
-          message.reply(text);
-      }
+      message.reply(response.text());
     } catch (error) {
       console.error("BRAIN ERROR:", error);
-      message.reply(`❌ **Neural Link Error:** Connection timeout or model mismatch. Ensure API Key is unrestricted in Google AI Studio.`);
+      message.reply(`❌ **Neural Link Error:** ${error.message || "Model Mismatch. Check API Key Tier."}`);
     }
   }
 
-  // --- BROADCAST COMMANDS ---
+  // --- BROADCAST SYSTEM ---
   if (command === '!tiktok') {
     const target = client.channels.cache.get(CHANNELS.TIKTOK_FEED);
     const embed = new EmbedBuilder().setColor('#00f2ea').setTitle('🚀 NEW CONTENT').setDescription(`@everyone **Commander Lexieee is live.** \n\n${args[1]}`);
@@ -69,7 +62,7 @@ client.on('messageCreate', async (message) => {
 
   if (command === '!meta') {
     const target = client.channels.cache.get(CHANNELS.WARZONE);
-    const embed = new EmbedBuilder().setColor('#ff1a1a').setTitle('🔫 ELITE META').addFields({ name: '🔥 BO7 / Warzone', value: 'XM4 Damage Build | C9 Speed Build' });
+    const embed = new EmbedBuilder().setColor('#ff1a1a').setTitle('🔫 ELITE META').addFields({ name: '🔥 BO7 / Warzone', value: 'XM4 Build | C9 Speed Build' });
     if (target) target.send({ embeds: [embed] });
   }
 
