@@ -12,9 +12,9 @@ const client = new Client({
 });
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = 'rayray8606'; // Your GitHub username
-const REPO_NAME = 'boss-babes-hq'; // The website repository name
-const FILE_PATH = 'index.html'; // The file we are editing
+const REPO_OWNER = 'rayray8606'; 
+const REPO_NAME = 'boss-babes-hq'; 
+const FILE_PATH = 'index.html'; 
 
 client.on('ready', () => {
   console.log(`[ROBERTS ENT. SYSTEM]: ${client.user.tag} ONLINE. Write-Access Enabled.`);
@@ -23,12 +23,10 @@ client.on('ready', () => {
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
 
-  // The Status Command
   if (message.content === '!status') {
     message.reply('👑 **LexOS Command:** Systems optimal. Write-Access pipeline is hot.');
   }
 
-  // The Update Timer Command
   if (message.content.startsWith('!update-timer')) {
     const newDate = message.content.replace('!update-timer ', '').trim();
     
@@ -39,16 +37,18 @@ client.on('messageCreate', async (message) => {
     message.reply(`⏳ **Command Acknowledged:** Initiating GitHub override for target date: ${newDate}...`);
 
     try {
-      // 1. Get the current file from GitHub
       const getFileResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-        headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+        headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
       });
       const fileData = await getFileResponse.json();
       
-      // Decode the code
+      // NEW ARMOR: Check if GitHub rejected us before trying to read the file
+      if (!getFileResponse.ok) {
+          return message.reply(`❌ **GitHub Rejected the Key:** ${fileData.message}. (Check your GITHUB_TOKEN)`);
+      }
+
       let content = Buffer.from(fileData.content, 'base64').toString('utf-8');
 
-      // 2. Find and Replace the Target Date in the code
       const dateRegex = /const targetDate = new Date\(".*?"\)\.getTime\(\);/;
       const replacement = `const targetDate = new Date("${newDate}").getTime();`;
       
@@ -58,14 +58,13 @@ client.on('messageCreate', async (message) => {
 
       content = content.replace(dateRegex, replacement);
 
-      // 3. Push the new code back to GitHub
       const updateResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
         method: 'PUT',
-        headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' },
+        headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' },
         body: JSON.stringify({
           message: `LexOS Command Override: Timer updated to ${newDate}`,
           content: Buffer.from(content).toString('base64'),
-          sha: fileData.sha // Required by GitHub to prove we have the latest version
+          sha: fileData.sha 
         })
       });
 
