@@ -1,20 +1,17 @@
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Parser = require('rss-parser');
 const express = require('express');
+
 const app = express();
-
-// 24/7 Uptime Link
-app.get('/', (req, res) => res.send('LexOS 3.1: Systems Nominal.'));
+const parser = new Parser();
+app.get('/', (req, res) => res.send('LexOS 3.1 Sentinel: Active.'));
 app.listen(process.env.PORT || 3000);
-
-// Generate a Unique Session ID for this specific boot
-const SESSION_ID = Math.floor(1000 + Math.random() * 9000);
 
 const client = new Client({ 
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
-// AI BRAIN INITIALIZATION
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
@@ -26,46 +23,77 @@ const CHANNELS = {
     LEXOS_BRAIN: '1503107593814413412'
 };
 
+// SENTINEL DATA STORAGE
+let lastVideoID = '';
+let tiktokHandle = ''; // Set this using !set-tiktok
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const REPO_OWNER = 'rayray8606'; 
-const REPO_NAME = 'boss-babes-hq'; 
-const FILE_PATH = 'index.html';
-let customCommands = new Map();
+const REPO_NAME = 'boss-babes-hq';
 
 client.on('ready', () => {
-  console.log(`[SYSTEM ONLINE]: LexOS 3.1 | Session: ${SESSION_ID}`);
+  console.log(`[SYSTEM]: LexOS Sentinel Online. Tracking: ${tiktokHandle || 'None'}`);
+  
+  // START THE 30-MINUTE AUTO-POLLER
+  setInterval(trackTikTok, 30 * 60 * 1000); 
 });
+
+async function trackTikTok() {
+    if (!tiktokHandle) return;
+    try {
+        // Using a high-performance 2026 RSS bridge for TikTok
+        const feed = await parser.parseURL(`https://rss.app/feeds/v1.1/t/${tiktokHandle}`);
+        const latestVideo = feed.items[0];
+        
+        if (latestVideo && latestVideo.id !== lastVideoID) {
+            lastVideoID = latestVideo.id;
+            const channel = client.channels.cache.get(CHANNELS.TIKTOK_FEED);
+            
+            const embed = new EmbedBuilder()
+                .setColor('#00f2ea')
+                .setTitle('🚀 AUTOMATIC CONTENT DETECTED')
+                .setURL(latestVideo.link)
+                .setDescription(`@everyone **The Commander just posted!** \n\nWe need maximum engagement in the next 60 seconds to hit the FYP! \n\n[WATCH & LIKE NOW](${latestVideo.link})`)
+                .setThumbnail('https://i.imgur.com/vHq7j0U.png')
+                .setFooter({ text: 'Sentinel Mode: Active' });
+
+            channel.send({ content: '@everyone', embeds: [embed] });
+            console.log(`[SENTINEL]: New Video Detected and Broadcasted: ${latestVideo.id}`);
+        }
+    } catch (e) {
+        console.error("[SENTINEL ERROR]: Feed unreachable or restricted.");
+    }
+}
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot) return;
   const args = message.content.split(' ');
   const command = args[0].toLowerCase();
 
-  // --- DIAGNOSTIC: !version ---
-  if (command === '!version') {
-    message.reply(`🛡️ **LexOS Core V3.1**\n**Status:** Active\n**Session ID:** \`${SESSION_ID}\`\n**Brain:** Gemini 3.1 Flash-Lite`);
+  // --- SET TIKTOK TARGET ---
+  if (command === '!set-tiktok' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
+    tiktokHandle = args[1].replace('@', '');
+    message.reply(`✅ **Sentinel Target Locked:** Now tracking @${tiktokHandle}. I will scan every 30 minutes.`);
+    trackTikTok(); // Run an immediate scan
   }
 
-  // --- THE AI BRAIN: !ask ---
+  // --- AI BRAIN (!ask) ---
   if (command === '!ask' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
-    const prompt = args.slice(1).join(' ');
-    if (!prompt) return message.reply('👑 **LexOS:** Awaiting instructions, Commander.');
     try {
-      const result = await model.generateContent(`You are LexOS, the elite AI Chief of Staff for Commander Lexieee. Response must be professional and strategic. Task: ${prompt}`);
+      const result = await model.generateContent(`You are LexOS. ${args.slice(1).join(' ')}`);
       message.reply(result.response.text());
-    } catch (e) { message.reply(`❌ Neural Error: ${e.message}`); }
+    } catch (e) { message.reply('❌ Neural Error.'); }
   }
 
-  // --- BROADCASTS ---
+  // --- MANUAL BROADCASTS ---
   if (command === '!tiktok') {
     const target = client.channels.cache.get(CHANNELS.TIKTOK_FEED);
-    const embed = new EmbedBuilder().setColor('#00f2ea').setTitle('🚀 NEW CONTENT').setDescription(`@everyone **The Commander is live.**\n\n${args[1] || 'Link Pending'}`);
+    const embed = new EmbedBuilder().setColor('#00f2ea').setTitle('🚀 NEW CONTENT').setDescription(`@everyone **Commander Lexieee is live.** \n\n${args[1]}`);
     if (target) target.send({ content: '@everyone', embeds: [embed] });
   }
 
   if (command === '!meta') {
     const target = client.channels.cache.get(CHANNELS.WARZONE);
-    const embed = new EmbedBuilder().setColor('#ff1a1a').setTitle('🔫 CURRENT META').addFields({ name: '🔥 Elite Loadouts', value: 'XM4 Damage Build | C9 Movement Build' });
+    const embed = new EmbedBuilder().setColor('#ff1a1a').setTitle('🔫 ELITE META').addFields({ name: '🔥 BO7 / Warzone', value: 'XM4 Build | C9 Speed Build' });
     if (target) target.send({ embeds: [embed] });
   }
 
@@ -73,30 +101,6 @@ client.on('messageCreate', async (message) => {
     const target = client.channels.cache.get(CHANNELS.SQUAD_RALLY);
     if (target) target.send('🚨 **WAR ROOM ALERT:** @everyone Lexie is dropping in. Fill the lobby.');
   }
-
-  // --- WEBSITE CONTROL ---
-  if (command === '!update-timer' && message.channel.id === CHANNELS.WEB_OPS) {
-    const newDate = args.slice(1).join(' ');
-    message.reply('⏳ Executing website override...');
-    try {
-      const getFile = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, { headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` } });
-      const fileData = await getFile.json();
-      let content = Buffer.from(fileData.content, 'base64').toString('utf-8');
-      content = content.replace(/const targetDate = new Date\(".*?"\)\.getTime\(\);/, `const targetDate = new Date("${newDate}").getTime();`);
-      await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${GITHUB_TOKEN}` },
-          body: JSON.stringify({ message: 'LexOS Override', content: Buffer.from(content).toString('base64'), sha: fileData.sha })
-      });
-      message.reply('✅ Website Mainframe Updated.');
-    } catch (e) { message.reply('❌ Push Failed.'); }
-  }
-
-  // --- DYNAMIC COMMANDS ---
-  if (command === '!add-cmd' && message.channel.id === CHANNELS.LEXOS_BRAIN) {
-    customCommands.set(args[1].toLowerCase(), args.slice(2).join(' '));
-    message.reply(`✅ Logic Added: \`${args[1]}\``);
-  }
-  if (customCommands.has(command)) message.channel.send(customCommands.get(command));
 });
 
 client.login(process.env.DISCORD_TOKEN);
